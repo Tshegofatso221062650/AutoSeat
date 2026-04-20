@@ -1,7 +1,69 @@
 import { useState } from 'react'
-import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/authContext'
 import { supabase } from '../supabaseClient'
+
+const styles = {
+  page: {
+    display: 'flex',
+    minHeight: '100vh',
+    backgroundColor: '#f5f5f5',
+  },
+  right: {
+    flex: 1,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '20px',
+  },
+  form: {
+    backgroundColor: 'white',
+    borderRadius: '8px',
+    padding: '40px',
+    maxWidth: '400px',
+    width: '100%',
+    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+  },
+  formTitle: {
+    fontSize: '24px',
+    fontWeight: 'bold',
+    marginBottom: '10px',
+    color: '#333',
+  },
+  formSub: {
+    fontSize: '14px',
+    color: '#666',
+    marginBottom: '30px',
+  },
+  error: {
+    backgroundColor: '#fee',
+    color: '#c00',
+    padding: '10px',
+    borderRadius: '4px',
+    marginBottom: '20px',
+    fontSize: '14px',
+  },
+  input: {
+    width: '100%',
+    padding: '12px',
+    marginBottom: '15px',
+    border: '1px solid #ddd',
+    borderRadius: '4px',
+    fontSize: '14px',
+    boxSizing: 'border-box',
+  },
+  submitBtn: {
+    width: '100%',
+    padding: '12px',
+    backgroundColor: '#007bff',
+    color: 'white',
+    border: 'none',
+    borderRadius: '4px',
+    fontSize: '16px',
+    fontWeight: 'bold',
+    cursor: 'pointer',
+  },
+}
 
 export default function Auth() {
   const { signInWithEmail } = useAuth()

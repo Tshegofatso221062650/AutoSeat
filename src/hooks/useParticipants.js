@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { initialParticipants, departmentLimits as mockDepartmentLimits, sessions as mockSessions } from '../data/mockData'
 import { supabase } from '../supabaseClient'
 
 export default function useParticipants() {
@@ -7,6 +8,7 @@ export default function useParticipants() {
   const [departmentLimits, setDepartmentLimits] = useState({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [dataSource, setDataSource] = useState(null) // 'supabase' or 'mockdata'
 
   // ─────────────────────────────
   // FETCH PARTICIPANTS
@@ -84,6 +86,12 @@ export default function useParticipants() {
     try {
       setLoading(true)
       setError(null)
+      setDataSource(null)
+
+      // Check if Supabase is initialized
+      if (!supabase) {
+        throw new Error('Supabase not configured');
+      }
 
       const [p, s, d] = await Promise.all([
         fetchParticipants(),
@@ -94,10 +102,17 @@ export default function useParticipants() {
       setParticipants(p)
       setSessions(s)
       setDepartmentLimits(d)
+      setDataSource('supabase')
 
     } catch (err) {
-      console.error(err)
-      setError(err.message || 'Failed to load data')
+      console.warn('Failed to load data from Supabase, using fallback mock data:', err)
+      
+      // FALLBACK: Use mock data
+      setParticipants(initialParticipants)
+      setSessions(mockSessions)
+      setDepartmentLimits(mockDepartmentLimits)
+      setDataSource('mockdata')
+      setError('Using local fallback data - Supabase unavailable')
     } finally {
       setLoading(false)
     }
@@ -105,6 +120,7 @@ export default function useParticipants() {
 
   // initial load
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadData()
   }, [loadData])
 
@@ -114,6 +130,7 @@ export default function useParticipants() {
     departmentLimits,
     loading,
     error,
+    dataSource,
     refresh: loadData
   }
 }

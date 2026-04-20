@@ -1,16 +1,28 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { initialParticipants, sessions, departmentLimits } from "../data/mockData";
+import useParticipants from "../hooks/useParticipants";
 
 function Dashboard() {
   const location = useLocation();
   const currentDepartment = location.state?.department || "Division A";
 
-  const [participants, setParticipants] = useState(initialParticipants);
+  // Use hook to fetch data (Supabase with fallback to mockData)
+  const { participants: hookParticipants, sessions, departmentLimits, loading, error, dataSource } = useParticipants();
+
+  // Local state for participants (initialized from hook data)
+  const [participants, setParticipants] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [viewMode, setViewMode] = useState("unallocated");
   const [selectedSession, setSelectedSession] = useState("All Sessions");
   const [message, setMessage] = useState("");
+
+  // Initialize participants from hook when data arrives
+  useEffect(() => {
+    if (hookParticipants && hookParticipants.length > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setParticipants(hookParticipants);
+    }
+  }, [hookParticipants]);
 
   const departmentParticipants = useMemo(() => {
     return participants.filter(
@@ -38,7 +50,7 @@ function Dashboard() {
         departmentRemaining: departmentLimits[currentDepartment] - departmentUsed,
       };
     });
-  }, [participants, currentDepartment]);
+  }, [participants, currentDepartment, sessions, departmentLimits]);
 
   const filteredParticipants = useMemo(() => {
     let filtered = [...departmentParticipants];
@@ -130,9 +142,16 @@ function Dashboard() {
         <div>
           <h1>{currentDepartment} Dashboard</h1>
           <p>Only members from {currentDepartment} are visible here.</p>
+          {dataSource && (
+            <p style={{ fontSize: "12px", color: dataSource === "supabase" ? "#28a745" : "#ff9800" }}>
+              {dataSource === "supabase" ? "✓ Live Data (Supabase)" : "⚠ Using Fallback Data (Local)"}
+            </p>
+          )}
         </div>
       </header>
 
+      {loading && <div className="loading-message">Loading allocation data...</div>}
+      {error && <div className="warning-message">{error}</div>}
       {message && <div className="info-message">{message}</div>}
 
       <section className="session-summary">
