@@ -5,19 +5,64 @@ const AuthContext = createContext({})
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
+  const [managerProfile, setManagerProfile] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    // Check if user is already logged in
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null)
-      setLoading(false)
-    })
+  // Fetch manager details from DB
+  const fetchManagerProfile = async (authUser) => {
+    if (!authUser) return null
 
-    // Listen for login/logout changes
+    const { data, error } = await supabase
+      .from('managers')
+      .select(`
+        user_id,
+        dept_id,
+        departments (
+          dept_id,
+          name
+        )
+      `)
+      .eq('user_id', authUser.id)
+      .single()
+
+    if (error) {
+      console.error('Error fetching manager profile:', error)
+      return null
+    }
+
+    return data
+  }
+
+  useEffect(() => {
+    const initAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+
+      const authUser = session?.user ?? null
+      setUser(authUser)
+
+      if (authUser) {
+        const profile = await fetchManagerProfile(authUser)
+        setManagerProfile(profile)
+      }
+
+      setLoading(false)
+    }
+
+    initAuth()
+
+    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setUser(session?.user ?? null)
+      async (_event, session) => {
+        const authUser = session?.user ?? null
+        setUser(authUser)
+
+        if (authUser) {
+          const profile = await fetchManagerProfile(authUser)
+          setManagerProfile(profile)
+        } else {
+          setManagerProfile(null)
+        }
+
         setLoading(false)
       }
     )
@@ -25,17 +70,24 @@ export function AuthProvider({ children }) {
     return () => subscription.unsubscribe()
   }, [])
 
+  // ─────────────────────────────
+  // AUTH METHODS
+  // ─────────────────────────────
+
   const signInWithGoogle = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: window.location.origin + '/feed' }
+      options: {
+        redirectTo: window.location.origin + '/dashboard'
+      }
     })
     if (error) throw error
   }
 
   const signInWithEmail = async (email, password) => {
     const { data, error } = await supabase.auth.signInWithPassword({
-      email, password
+      email,
+      password
     })
     if (error) throw error
     return data
@@ -45,7 +97,11 @@ export function AuthProvider({ children }) {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: username } }
+      options: {
+        data: {
+          full_name: username
+        }
+      }
     })
     if (error) throw error
     return data
@@ -54,11 +110,22 @@ export function AuthProvider({ children }) {
   const signOut = async () => {
     const { error } = await supabase.auth.signOut()
     if (error) throw error
+    setUser(null)
+    setManagerProfile(null)
   }
 
   return (
     <AuthContext.Provider value={{
-      user, loading,
+      // auth
+      user,
+      loading,
+
+      // domain-specific identity 
+      managerProfile,
+      departmentId: managerProfile?.dept_id,
+      departmentName: managerProfile?.departments?.name,
+
+      // actions
       signInWithGoogle,
       signInWithEmail,
       signUpWithEmail,
